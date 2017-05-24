@@ -386,6 +386,7 @@ Prometheus.Graph.prototype.submitQuery = function() {
     url = PATH_PREFIX + "/api/v1/query";
     success = function(json, textStatus) { self.handleConsoleResponse(json, textStatus); };
   }
+  self.params = params;
 
   self.queryXhr = $.ajax({
       method: self.queryForm.attr("method"),
@@ -518,7 +519,21 @@ Prometheus.Graph.prototype.transformData = function(json) {
       color: palette.color()
     };
   });
-  Rickshaw.Series.zeroFill(data);
+  data.forEach(function(s) {
+    // Insert nulls for all missing steps.
+    var newSeries = [];
+    var pos = 0;
+    for (var t = self.params.start; t <= self.params.end; t += self.params.step) {
+      // Allow for 10ms floating point inaccuracy, step is in seconds.
+      if (s.data.length > pos && Math.abs(s.data[pos].x - t) < .01) {
+        newSeries.push(s.data[pos]);
+        pos++;
+      } else {
+        newSeries.push({x: t, y: null});
+      }
+    }
+    s.data = newSeries;
+  });
   return data;
 };
 
